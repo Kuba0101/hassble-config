@@ -113,28 +113,28 @@ devices:
       manufacturer_id: 861            # 0x035D
       manufacturer_hex_prefix: "04"   # 응답 비콘만 매칭 (07=SmartKey 인증, 02=출입 이벤트 제외)
       manufacturer_min_length: 14     # 최소 14바이트
-    advertise:
-      manufacturer_id: 861            # 0x035D
-      # 02 05 00 | battery 100% | {state} | {counter} — 카운터는 버튼마다 +1, 버스트 중 고정
-      payload: "02050064{state:02X}{counter:02X}"
-      counter_mode: persist          # 요청마다 누적. 0xFF 다음은 0
-      counter_start: 0
-      mode: low_latency              # ~100ms → press 200ms 동안 약 1~2패킷
-      tx_power: high
-      timeout: 4s                    # 페이즈 합(3.2s)보다 약간 큰 상한
-      local_name: "APT SmartKey"     # Complete Local Name. 송신 중 이 이름으로 바꾸고, 종료·재시작 때 초기값으로 되돌림
-      payload_phases:
-        - state: 65                  # 0x41 버튼 누름 + ACK 대기
-          duration: 200ms
-        - state: 64                  # 0x40 홀드 + ACK 대기
-          duration: 3s
-      stop_on_response: true
-    controls:
-      - key: request_location
-        type: button
-        name: "주차위치 요청"
-        action: advertise
-        icon: mdi:car-search
+    #advertise:
+    #  manufacturer_id: 861            # 0x035D
+    #  # 02 05 00 | battery 100% | {state} | {counter} — 카운터는 버튼마다 +1, 버스트 중 고정
+    #  payload: "02050064{state:02X}{counter:02X}"
+    #  counter_mode: persist          # 요청마다 누적. 0xFF 다음은 0
+    #  counter_start: 0
+    #  mode: low_latency              # ~100ms → press 200ms 동안 약 1~2패킷
+    #  tx_power: high
+    #  timeout: 4s                    # 페이즈 합(3.2s)보다 약간 큰 상한
+    #  local_name: "APT SmartKey"     # Complete Local Name. 송신 중 이 이름으로 바꾸고, 종료·재시작 때 초기값으로 되돌림
+    #  payload_phases:
+    #    - state: 65                  # 0x41 버튼 누름 + ACK 대기
+    #      duration: 200ms
+    #    - state: 64                  # 0x40 홀드 + ACK 대기
+    #      duration: 3s
+    #  stop_on_response: true
+    #controls:
+    #  - key: request_location
+    #    type: button
+    #    name: "주차위치 요청"
+    #    action: advertise
+    #    icon: mdi:car-search
     sensors:
       - key: parking_time
         device_class: timestamp
@@ -180,7 +180,7 @@ devices:
           type: uint8
           map:
             "65": "entering"          # 0x41 인증 시작
-            "1": "entering"           # 0x01 인증 완료 (entering과 동일 → 전환 노이즈 제거)
+            "1": "entered"           # 0x01 인증 완료 (entering과 동일 → 전환 노이즈 제거)
             "64": "exiting"           # 0x40
             "0": "idle"               # 0x00
 
