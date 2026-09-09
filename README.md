@@ -360,7 +360,7 @@ Each item in the `sensors` list defines one HA entity.
 ```yaml
 sensors:
   - key: temperature           # Required — unique key within the device
-    platform: sensor           # sensor | binary_sensor | text_sensor
+    platform: sensor           # sensor | binary_sensor | text_sensor | event
     device_class: temperature  # HA device_class (optional)
     unit: "°C"
     state_class: measurement   # measurement | total | total_increasing

@@ -409,7 +409,7 @@ obd:
 ```yaml
 sensors:
   - key: temperature           # 필수 — 기기 내 고유 키
-    platform: sensor           # sensor | binary_sensor | text_sensor
+    platform: sensor           # sensor | binary_sensor | text_sensor | event
     device_class: temperature  # HA device_class (선택)
     unit: "°C"
     state_class: measurement   # measurement | total | total_increasing

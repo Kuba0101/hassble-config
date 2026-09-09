@@ -183,6 +183,26 @@ devices:
             "1": "entered"           # 0x01 인증 완료 (entering과 동일 → 전환 노이즈 제거)
             "64": "exiting"           # 0x40
             "0": "idle"               # 0x00
+      # 통과 "시각"을 남기는 이벤트 엔티티 — 상태값이 마지막 발생 시각이라 같은 event_type이
+      # 반복돼도 매번 갱신되고, HA 재시작 때 복원되지 않아 묵은 값이 되살아나지 않는다.
+      # door_status(현재 상태)와 병행: 같은 광고에서 두 엔티티를 뽑는다.
+      - key: door_event
+        platform: event
+        event_types: [entering, entered, exiting, idle]
+        icon: mdi:door-open
+        source_field: manufacturer_data
+        length: 6
+        publish:
+          heartbeat: 60s            # 같은 event_type이어도 60초 지났으면 재발화 = 통과마다 1회
+        decode:
+          offset: 4
+          length: 1
+          type: uint8
+          map:
+            "65": "entering"
+            "1": "entered"
+            "64": "exiting"
+            "0": "idle"
 
   # ──────────────────────────────────────────────────────────────
   # Path C: OBD (ELM327) over BLE

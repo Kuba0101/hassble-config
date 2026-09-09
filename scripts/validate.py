@@ -13,7 +13,7 @@ import yaml
 VALID_SOURCES = {"advertisement", "gatt_notify", "obd"}
 VALID_INSTANCE_MODES = {"mac", "shared"}
 VALID_SOURCE_FIELDS = {"service_data", "manufacturer_data", "raw"}
-VALID_PLATFORMS = {"sensor", "binary_sensor", "text_sensor"}
+VALID_PLATFORMS = {"sensor", "binary_sensor", "text_sensor", "event"}
 VALID_DATA_TYPES = {
     "int8", "uint8", "int16", "uint16", "int32", "uint32",
     "float32", "timestamp", "string"
@@ -61,7 +61,7 @@ KNOWN_ADVERTISE_PHASE_KEYS = {
     "state", "duration", "payload"
 }
 KNOWN_SENSOR_KEYS = {
-    "key", "name", "platform", "device_class", "unit", "state_class", "icon",
+    "key", "name", "platform", "event_types", "device_class", "unit", "state_class", "icon",
     "entity_category", "accuracy_decimals", "source_field", "length",
     "min_length", "decode", "preset", "mode", "pid", "formula",
     "update_interval", "pre_commands", "publish"
@@ -148,7 +148,8 @@ def validate_decode(decode: Any, path: str, res: ValidationResult):
             res.error(f"{path}.map", "map must be a dictionary (key: value)")
 
 
-def validate_sensor(sensor: Any, device_source: str, path: str, res: ValidationResult):
+def validate_sensor(sensor: Any, device_source: str, path: str, res: ValidationResult,
+                    inherited_publish: Optional[Dict[str, Any]] = None):
     if not isinstance(sensor, dict):
         res.error(path, "Sensor must be an object")
         return
@@ -164,6 +165,7 @@ def validate_sensor(sensor: Any, device_source: str, path: str, res: ValidationR
         res.error(f"{path}.platform", f"Invalid platform '{platform}'. Must be one of {sorted(list(VALID_PLATFORMS))}")
 
     is_text = platform == "text_sensor"
+    is_event = platform == "event"
     unit = sensor.get("unit")
     state_class = sensor.get("state_class")
     if isinstance(state_class, str) and state_class.lower() == "none":
@@ -171,7 +173,34 @@ def validate_sensor(sensor: Any, device_source: str, path: str, res: ValidationR
     device_class = sensor.get("device_class")
     accuracy_decimals = sensor.get("accuracy_decimals")
 
-    if is_text:
+    if is_event:
+        event_types = sensor.get("event_types")
+        if not isinstance(event_types, list) or not event_types:
+            res.error(f"{path}.event_types",
+                      "platform=event requires a non-empty 'event_types' list — HA rejects the declaration without it")
+            event_types = []
+        decode_map = (sensor.get("decode") or {}).get("map")
+        if isinstance(decode_map, dict):
+            undeclared = sorted({str(v) for v in decode_map.values()} - {str(t) for t in event_types})
+            if undeclared:
+                res.warning(f"{path}.event_types",
+                            f"decode.map value(s) {undeclared} missing from event_types — HA drops those events")
+        elif sensor.get("decode") is not None:
+            res.warning(f"{path}.decode",
+                        "platform=event without decode.map — the raw decoded value becomes the event_type and will be dropped")
+        if unit is not None or state_class is not None or accuracy_decimals is not None:
+            res.warning(f"{path}.unit", "unit/state_class/accuracy_decimals are ignored for event")
+        if device_class in NUMERIC_DEVICE_CLASSES:
+            res.warning(f"{path}.device_class",
+                        f"device_class='{device_class}' is numeric but platform is event — HA event supports doorbell/button/motion")
+        publish = sensor.get("publish", inherited_publish) or {}
+        heartbeat = publish.get("heartbeat") if isinstance(publish, dict) else None
+        on_change_only = publish.get("on_change_only", True) if isinstance(publish, dict) else True
+        if on_change_only and not (isinstance(heartbeat, str) and _DURATION_RE.match(heartbeat.strip())):
+            res.warning(f"{path}.publish",
+                        "on_change_only suppresses repeats of the same event_type — "
+                        "set publish.heartbeat (or on_change_only: false) to fire on every occurrence")
+    elif is_text:
         if unit is not None:
             res.warning(f"{path}.unit", f"unit='{unit}' is ignored for text_sensor")
         if state_class is not None:
@@ -462,7 +491,8 @@ def validate_control(control: Any, device_source: str, gatt: Optional[dict], obd
                     res.error(f"{path}.command", f"Select control missing command key for option '{opt}'")
 
 
-def validate_device(device: Any, path: str, res: ValidationResult):
+def validate_device(device: Any, path: str, res: ValidationResult,
+                    defaults_publish: Optional[Dict[str, Any]] = None):
     if not isinstance(device, dict):
         res.error(path, "Device must be an object")
         return
@@ -522,7 +552,8 @@ def validate_device(device: Any, path: str, res: ValidationResult):
         res.error(f"{path}.sensors", "sensors must be a list")
     else:
         for idx, s in enumerate(sensors):
-            validate_sensor(s, source, f"{path}.sensors[{idx}]", res)
+            validate_sensor(s, source, f"{path}.sensors[{idx}]", res,
+                            device.get("publish", defaults_publish))
 
     controls = device.get("controls", [])
     if not isinstance(controls, list):
@@ -556,19 +587,22 @@ def validate_config_file(filepath: str) -> ValidationResult:
     if version != 1:
         res.warning("version", f"Schema version is {version}, expected 1")
 
+    defaults_publish: Optional[Dict[str, Any]] = None
     if "defaults" in data:
         defaults = data["defaults"]
         if not isinstance(defaults, dict):
             res.error("defaults", "defaults must be an object")
         elif "publish" in defaults:
             validate_publish(defaults["publish"], "defaults.publish", res)
+            if isinstance(defaults["publish"], dict):
+                defaults_publish = defaults["publish"]
 
     devices = data.get("devices", [])
     if not isinstance(devices, list):
         res.error("devices", "devices must be a list")
     else:
         for idx, dev in enumerate(devices):
-            validate_device(dev, f"devices[{idx}]", res)
+            validate_device(dev, f"devices[{idx}]", res, defaults_publish)
 
     return res
 
