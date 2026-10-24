@@ -48,4 +48,15 @@ devices:
         state_class: measurement
         accuracy_decimals: 1
         update_interval: 30s
+      - key: traction_battery_temp
+        mode: "22"
+        pid: "D8EF"
+        pre_commands:
+          - "ATSH 6A2"
+        formula: "b-40"
+        unit: "°C"
+        state_class: measurement
+        accuracy_decimals: 0
+        update_interval: 60s
+
 
