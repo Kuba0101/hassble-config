@@ -34,10 +34,10 @@ devices:
       #- { key: speed,        preset: speed,               update_interval: 1s }
       #- { key: engine_load,  preset: engine_load,         update_interval: 1s }
       #- { key: throttle,     preset: throttle,            update_interval: 1s }
-      - { key: coolant_temp, preset: coolant_temp,        update_interval: 10s }
+      #- { key: coolant_temp, preset: coolant_temp,        update_interval: 10s }
       #- { key: intake_temp,  preset: intake_air_temp,     update_interval: 10s }
-      - { key: ambient_temp, preset: ambient_temp,        update_interval: 30s }
-      - { key: battery,      preset: battery_voltage,     update_interval: 10s }
+      #- { key: ambient_temp, preset: ambient_temp,        update_interval: 30s }
+      #- { key: battery,      preset: battery_voltage,     update_interval: 10s }
       - key: traction_battery_soc
         mode: "22"
         pid: "D410"
@@ -47,16 +47,7 @@ devices:
         unit: "%"
         state_class: measurement
         accuracy_decimals: 1
-        update_interval: 30s
-      - key: traction_battery_temp
-        mode: "22"
-        pid: "D8EF"
-        pre_commands:
-          - "ATSH 6A2"
-        formula: "b-40"
-        unit: "°C"
-        state_class: measurement
-        accuracy_decimals: 0
-        update_interval: 60s
+        update_interval: 10s
+      
 
 
